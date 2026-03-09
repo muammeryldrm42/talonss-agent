@@ -1,16 +1,15 @@
-import { marketQuerySchema } from '@/lib/schemas/api';
+ import { marketQuerySchema } from '@/lib/schemas/api';
 import { getCoinMarketData } from '@/lib/market/service';
 import { badRequest, serverError } from '@/lib/utils/http';
 
 export const runtime = 'nodejs';
 
-type RouteContext = {
-  params: { symbol: string } | Promise<{ symbol: string }>;
-};
-
-export async function GET(request: Request, context: RouteContext) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ symbol: string }> },
+) {
   try {
-    const params = await Promise.resolve(context.params);
+    const { symbol } = await params;
     const { searchParams } = new URL(request.url);
 
     const parsed = marketQuerySchema.safeParse({
@@ -22,7 +21,12 @@ export async function GET(request: Request, context: RouteContext) {
       return badRequest('Invalid market query.', parsed.error.flatten());
     }
 
-    const market = await getCoinMarketData(params.symbol, parsed.data.timeframe, parsed.data.coinId);
+    const market = await getCoinMarketData(
+      symbol,
+      parsed.data.timeframe,
+      parsed.data.coinId,
+    );
+
     return Response.json({ market });
   } catch (error) {
     return serverError(
